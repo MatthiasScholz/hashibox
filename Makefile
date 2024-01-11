@@ -1,11 +1,10 @@
-provider ?= vmware_desktop
-vagrant_provider_name ?= vmware-iso
+provider ?= vmware_desktop # or virtualbox
+vagrant_provider_name ?= vmware-iso # or virtualbox-iso, qemu
 vagrant_box_name ?= nixbox
-vagrant_box_file ?= nix-vmware.box
+vagrant_box_file_vmware ?= nix-vmware.box
 
-nixos_version := nixos/nixos-21.05-x86_64
+nixos_version := nixos/nixos-21.11-x86_64
 
-all: setup init up
 
 setup:
 	vagrant plugin install vagrant-nixos-plugin
@@ -13,7 +12,8 @@ setup:
 
 setup-provider-vmware:
 	brew install --cask vagrant-vmware-utility
-	brew services vagrant-vmware-utility vagrant-vmware-utility
+	sudo launchctl unload -w /Library/LaunchDaemons/com.vagrant.vagrant-vmware-utility.plist
+	sudo launchctl load -w /Library/LaunchDaemons/com.vagrant.vagrant-vmware-utility.plist
 	vagrant plugin install vagrant-vmware-desktop
 	vagrant plugin list
 
@@ -47,7 +47,7 @@ base_vm_root_folder := ./nixbox
 base-genkey:
 	ssh-keygen -f $(base_vm_root_folder)/scripts/install_rsa -t ecdsa -b 521
 
-vagrant_box := nix-vmware.box
+#vagrant_box := nix-vmware.box
 base-build:
 	cd $(base_vm_root_folder) && packer build --only=$(vagrant_provider_name) nixos-x86_64.json
 
@@ -56,15 +56,15 @@ base-optimize-vmware:
 	vmware-vdiskmanager -d $(output_folder)/disk.vmdk
 	vmware-vdiskmanager -k $(output_folder)/disk.vmdk
 
-base-package-prepare:
-	rm -f $(vagrant_box_file)
+base-package-prepare-vmware:
+	rm -f $(vagrant_box_file_vmware)
 	cp -f ./$(base_vm_root_folder)/metadata.json $(output_folder)/
-	tar cvzf $(vagrant_box_file) --directory=$(output_folder)/ .
+	tar cvzf $(vagrant_box_file_vmware) --directory=$(output_folder)/ .
 
-base-package:
-	vagrant box add --name $(vagrant_box_name) $(vagrant_box_file)
+base-package-vmware:
+	vagrant box add --name $(vagrant_box_name) $(vagrant_box_file_vmware)
 	vagrant box list -i
 
 base-package-virtualbox:
-	vagrant box add --name $(vagrant_box_name) $(base_vm_root_folde)/nixos-21.11-virtualbox-x86_64.box
+	vagrant box add --name $(vagrant_box_name) $(base_vm_root_folder)/nixos-21.11-virtualbox-x86_64.box
 	vagrant box list -i
